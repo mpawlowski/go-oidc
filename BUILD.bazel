@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "jose.go",
+        "jwks.go",
+        "oidc.go",
+        "verify.go",
+    ],
+    importpath = "github.com/mpawlowski/agent/submodules/go-oidc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pquerna_cachecontrol//:go_default_library",
+        "@in_gopkg_square_go_jose_v2//:go_default_library",
+        "@org_golang_x_oauth2//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "jwks_test.go",
+        "oidc_test.go",
+        "verify_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "@in_gopkg_square_go_jose_v2//:go_default_library",
+        "@org_golang_x_oauth2//:go_default_library",
+    ],
+)
