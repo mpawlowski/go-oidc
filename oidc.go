@@ -65,11 +65,13 @@ func doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 
 // Provider represents an OpenID Connect server's configuration.
 type Provider struct {
-	issuer      string
-	authURL     string
-	tokenURL    string
-	userInfoURL string
-	algorithms  []string
+	issuer                string
+	authURL               string
+	tokenURL              string
+	userInfoURL           string
+	endSessionURL         string
+	checkSessionIframeURL string
+	algorithms            []string
 
 	// Raw claims returned by the server.
 	rawClaims []byte
@@ -83,12 +85,14 @@ type cachedKeys struct {
 }
 
 type providerJSON struct {
-	Issuer      string   `json:"issuer"`
-	AuthURL     string   `json:"authorization_endpoint"`
-	TokenURL    string   `json:"token_endpoint"`
-	JWKSURL     string   `json:"jwks_uri"`
-	UserInfoURL string   `json:"userinfo_endpoint"`
-	Algorithms  []string `json:"id_token_signing_alg_values_supported"`
+	Issuer                string   `json:"issuer"`
+	AuthURL               string   `json:"authorization_endpoint"`
+	TokenURL              string   `json:"token_endpoint"`
+	JWKSURL               string   `json:"jwks_uri"`
+	UserInfoURL           string   `json:"userinfo_endpoint"`
+	EndSessionURL         string   `json:"end_session_endpoint"`
+	CheckSessionIframeURL string   `json:"check_session_iframe"`
+	Algorithms            []string `json:"id_token_signing_alg_values_supported"`
 }
 
 // supportedAlgorithms is a list of algorithms explicitly supported by this
@@ -160,13 +164,15 @@ func NewProvider(ctx context.Context, issuer string, validIssuers ...string) (*P
 		}
 	}
 	return &Provider{
-		issuer:       p.Issuer,
-		authURL:      p.AuthURL,
-		tokenURL:     p.TokenURL,
-		userInfoURL:  p.UserInfoURL,
-		algorithms:   algs,
-		rawClaims:    body,
-		remoteKeySet: NewRemoteKeySet(ctx, p.JWKSURL),
+		issuer:                p.Issuer,
+		authURL:               p.AuthURL,
+		tokenURL:              p.TokenURL,
+		userInfoURL:           p.UserInfoURL,
+		checkSessionIframeURL: p.CheckSessionIframeURL,
+		endSessionURL:         p.EndSessionURL,
+		algorithms:            algs,
+		rawClaims:             body,
+		remoteKeySet:          NewRemoteKeySet(ctx, p.JWKSURL),
 	}, nil
 }
 
@@ -259,6 +265,26 @@ func (p *Provider) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource)
 	}
 	userInfo.claims = body
 	return &userInfo, nil
+}
+
+// SessionInfo represents the OpenID Connect Session Managemnt draft urls.
+type SessionInfo struct {
+	EndSessionURL         string
+	CheckSessionIframeURL string
+}
+
+// SessionManagement returns the end session and check session iframe endpoints for the provider.
+func (p *Provider) SessionManagement() (*SessionInfo, error) {
+	if p.endSessionURL == "" {
+		return nil, errors.New("oid session: session management unsupported by this provider")
+	}
+	if p.checkSessionIframeURL == "" {
+		return nil, errors.New("oid session: session management unsupported by this provider")
+	}
+	return &SessionInfo{
+		EndSessionURL:         p.endSessionURL,
+		CheckSessionIframeURL: p.checkSessionIframeURL,
+	}, nil
 }
 
 // IDToken is an OpenID Connect extension that provides a predictable representation
